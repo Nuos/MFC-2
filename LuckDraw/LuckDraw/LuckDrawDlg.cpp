@@ -39,6 +39,17 @@ BEGIN_MESSAGE_MAP(CLuckDrawDlg, CDialogEx)
 	ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
+std::wstring s2ws(const std::string& s)
+{
+	int len;
+	int slength = (int)s.length() + 1;
+	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+	wchar_t* buf = new wchar_t[len];
+	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+	std::wstring r(buf);
+	delete[] buf;
+	return r;
+}
 
 // CLuckDrawDlg 消息处理程序
 
@@ -55,14 +66,14 @@ BOOL CLuckDrawDlg::OnInitDialog()
 	//初始化数据库
 	InitDatabase();
 	//设置字体
-	m_Font.CreatePointFont(180, TEXT("Consolar"), NULL);
+	m_Font.CreatePointFont(150, TEXT("Consolar"), NULL);
 	m_CurData.SetFont(&m_Font);
-	CFont * pFont = m_CurData.GetFont();
+	m_pFont = m_CurData.GetFont();
 	LOGFONT lf;
-	pFont->GetLogFont(&lf);
-	lf.lfHeight = 105;
-	pFont->CreateFontIndirectW(&lf);
-	m_CurData.SetFont(pFont, true);
+	m_pFont->GetLogFont(&lf);
+	lf.lfHeight = 50;
+	m_pFont->CreateFontIndirectW(&lf);
+	m_CurData.SetFont(m_pFont, true);
 	//设置全屏
 	if (gFullScreen)
 	{
@@ -97,6 +108,39 @@ void CLuckDrawDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+		if (m_curValue != -1)
+		{
+			CDC *  pDCShow;
+			pDCShow = m_CurData.GetDC();
+			CDC  memDC;
+			CRect rect;
+			CBitmap memBmp, *pOldBmp;
+			m_CurData.GetClientRect(rect);
+			memDC.CreateCompatibleDC(pDCShow);
+			memBmp.CreateCompatibleBitmap(&memDC, rect.Width(), rect.Height());
+			pOldBmp = memDC.SelectObject(&memBmp);
+			// 更新窗口
+			m_CurData.UpdateWindow();
+			// 背景用白色填充
+			memDC.FillSolidRect(rect, RGB(0, 255, 255));
+			// 设置为透明模式
+			memDC.SetBkMode(TRANSPARENT);
+			memDC.SetTextColor(RGB(255, 255, 0));
+			std::string tDisplayText = m_datas[m_curValue].name + " ";
+			tDisplayText.append(m_datas[m_curValue].phone);
+			CFont * pOldFont = memDC.SelectObject(m_pFont);
+			CString tString = s2ws(tDisplayText).c_str();
+			CSize textSize = memDC.GetTextExtent(tString);
+			memDC.TextOut(rect.Width() / 2 - textSize.cx / 2, rect.Height() / 2 - textSize.cy / 2, tString);
+			// 将内存DC中的内容拷贝到设备DC中
+			pDCShow->BitBlt(0, 0, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
+
+			// 清理
+			memDC.SelectObject(pOldBmp);
+			memBmp.DeleteObject();
+			memDC.DeleteDC();
+			m_CurData.ReleaseDC(pDCShow);
+		}
 	}
 }
 
@@ -175,17 +219,6 @@ HBRUSH CLuckDrawDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	return hbr;
 }
 
-std::wstring s2ws(const std::string& s)
-{
-	int len;
-	int slength = (int)s.length() + 1;
-	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
-	wchar_t* buf = new wchar_t[len];
-	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-	std::wstring r(buf);
-	delete[] buf;
-	return r;
-}
 
 void CLuckDrawDlg::InitDatabase()
 {
@@ -213,15 +246,15 @@ void CLuckDrawDlg::ToggleRandom()
 void CLuckDrawDlg::RandomData()
 {
 	m_curValue = rand() % m_datas.size();
-	std::string tDisplayText = m_datas[m_curValue].name + " ";
-	tDisplayText.append(m_datas[m_curValue].phone);
-	m_CurData.SetWindowTextW(s2ws(tDisplayText).c_str());
+	//std::string tDisplayText = m_datas[m_curValue].name + " ";
+	//tDisplayText.append(m_datas[m_curValue].phone);
+	//m_CurData.SetWindowTextW(s2ws(tDisplayText).c_str());
 	//TRACE("=======%s\n", m_datas[cur].name.c_str());
 	//以下为3中刷新文字信息的方法
 	CRect rc;
 	m_CurData.GetWindowRect(&rc);
-	ScreenToClient(&rc);
-	InvalidateRect(rc);
+	//ScreenToClient(&rc);
+	InvalidateRect(rc, FALSE);
 
 	/*m_CurData.ShowWindow(SW_HIDE);
 	m_CurData.ShowWindow(SW_SHOW);*/

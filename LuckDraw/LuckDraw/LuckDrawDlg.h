@@ -49,6 +49,7 @@ public:
 	// 当前显示的数据
 	CStatic m_CurData;
 	CFont m_Font;
+	CFont * m_pFont;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 };
